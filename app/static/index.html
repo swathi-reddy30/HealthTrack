@@ -3,287 +3,802 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HealthTrack</title>
+  <title>HealthTrack | Patient Risk Insights</title>
   <style>
     :root {
-      --text: #1f2933;
-      --muted: #616e7c;
-      --border: #d9e2ec;
-      --background: #f5f7fa;
-      --primary: #2563eb;
-      --low-bg: #dcfce7;   --low-text: #166534;
-      --medium-bg: #fef9c3; --medium-text: #854d0e;
-      --high-bg: #fee2e2;  --high-text: #991b1b;
+      --bg: #f3f6f8;
+      --surface: #ffffff;
+      --surface-muted: #f8fafb;
+      --navy: #0f2a44;
+      --text: #334155;
+      --muted: #64748b;
+      --border: #e3e8ee;
+      --teal: #0d9488;
+      --teal-dark: #0f766e;
+      --teal-soft: #e6f6f4;
+      --low: #16a34a;    --low-soft: #dcfce7;    --low-text: #166534;
+      --medium: #d97706; --medium-soft: #fef3c7; --medium-text: #92400e;
+      --high: #dc2626;   --high-soft: #fee2e2;   --high-text: #991b1b;
+      --radius: 12px;
+      --shadow: 0 1px 2px rgba(15, 42, 68, 0.04), 0 2px 8px rgba(15, 42, 68, 0.05);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      color: var(--text);
-      background: var(--background);
+      font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 15px;
       line-height: 1.5;
+      color: var(--text);
+      background: var(--bg);
     }
-    main { max-width: 960px; margin: 0 auto; padding: 32px 16px; }
-    h1 { margin: 0 0 4px; }
-    .subtitle { color: var(--muted); margin: 0 0 24px; }
+    h1, h2, h3 { color: var(--navy); margin: 0; }
+    button { font: inherit; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;
+    }
+    .hidden { display: none !important; }
+    :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+    /* Header */
+    .app-header { background: var(--surface); border-bottom: 1px solid var(--border); }
+    .app-header .container { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 68px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-logo {
+      width: 38px; height: 38px; border-radius: 10px; background: var(--teal);
+      display: grid; place-items: center; flex-shrink: 0;
+    }
+    .brand-name { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.01em; }
+    .brand-tagline { font-size: 0.82rem; color: var(--muted); }
+    .model-status {
+      display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px;
+      border: 1px solid var(--border); border-radius: 999px; font-size: 0.82rem;
+      color: var(--muted); background: var(--surface-muted); white-space: nowrap;
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+    .model-status.ready .status-dot { background: var(--low); }
+    .model-status.ready { color: var(--low-text); }
+    .model-status.unavailable .status-dot { background: var(--high); }
+    .model-status.unavailable { color: var(--high-text); }
+
+    main.container { padding-top: 28px; padding-bottom: 32px; }
+    .page-intro { margin-bottom: 20px; }
+    .page-intro h1 { font-size: 1.45rem; letter-spacing: -0.01em; }
+    .page-intro p { margin: 4px 0 0; color: var(--muted); }
+
+    /* Cards */
     .card {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 20px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: var(--shadow); margin-bottom: 20px;
     }
-    .card h2 { margin-top: 0; font-size: 1.15rem; }
-    .upload-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-    button {
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      padding: 8px 18px;
-      font-size: 1rem;
-      cursor: pointer;
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
     }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    .link-button { background: none; color: var(--primary); padding: 0; font-size: 0.95rem; }
-    .hint { color: var(--muted); font-size: 0.9rem; margin: 10px 0 0; }
-    .status { margin-top: 12px; }
-    .error { color: var(--high-text); background: var(--high-bg); padding: 10px 12px; border-radius: 6px; }
-    .loading { color: var(--muted); }
-    .summary { color: var(--muted); margin-bottom: 12px; }
+    .card-header h2 { font-size: 1.02rem; }
+    .card-subtitle { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
+    .card-body { padding: 20px; }
+
+    /* Upload */
+    .upload-layout { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: stretch; }
+    .dropzone {
+      display: flex; align-items: center; gap: 16px; padding: 18px 20px; cursor: pointer;
+      border: 2px dashed #c6d3dd; border-radius: 10px; background: var(--surface-muted);
+      transition: border-color 0.15s, background-color 0.15s;
+    }
+    .dropzone:hover, .dropzone.dragging { border-color: var(--teal); background: var(--teal-soft); }
+    .dropzone:focus-within { border-color: var(--teal); }
+    .dropzone-icon {
+      width: 44px; height: 44px; border-radius: 10px; background: var(--teal-soft);
+      display: grid; place-items: center; flex-shrink: 0;
+    }
+    .dropzone-title { font-weight: 600; color: var(--navy); }
+    .dropzone-title .browse-link { color: var(--teal); text-decoration: underline; text-underline-offset: 2px; }
+    .dropzone-hint { font-size: 0.83rem; color: var(--muted); }
+    .file-chip {
+      display: none; align-items: center; gap: 8px; margin-top: 8px; padding: 4px 6px 4px 10px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      font-size: 0.85rem; color: var(--navy); max-width: 100%;
+    }
+    .file-chip.visible { display: inline-flex; }
+    .file-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .file-chip-size { color: var(--muted); white-space: nowrap; }
+    .icon-button {
+      border: none; background: none; color: var(--muted); cursor: pointer; padding: 2px 6px;
+      border-radius: 6px; line-height: 1; font-size: 1.1rem;
+    }
+    .icon-button:hover { background: var(--bg); color: var(--navy); }
+    .primary-button {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-width: 190px; padding: 0 22px; border: none; border-radius: 10px;
+      background: var(--teal); color: #fff; font-weight: 600; cursor: pointer;
+    }
+    .primary-button:hover:not(:disabled) { background: var(--teal-dark); }
+    .primary-button:disabled { background: #94c9c4; cursor: not-allowed; }
+    .spinner {
+      width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.4);
+      border-top-color: #fff; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .alert { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; padding: 10px 14px; border-radius: 8px; font-size: 0.9rem; }
+    .alert-error { background: var(--high-soft); color: var(--high-text); }
+    .alert-success { background: var(--teal-soft); color: var(--teal-dark); }
+
+    /* Overview stats */
+    .stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 20px; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 14px 16px; border-top: 3px solid var(--border);
+    }
+    .stat-card.accent-teal { border-top-color: var(--teal); }
+    .stat-card.accent-navy { border-top-color: var(--navy); }
+    .stat-card.accent-rejected { border-top-color: #94a3b8; }
+    .stat-card.accent-low { border-top-color: var(--low); }
+    .stat-card.accent-medium { border-top-color: var(--medium); }
+    .stat-card.accent-high { border-top-color: var(--high); }
+    .stat-label { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+    .stat-value { font-size: 1.6rem; font-weight: 700; color: var(--navy); line-height: 1.25; margin-top: 2px; }
+    .stat-note { font-size: 0.78rem; color: var(--muted); }
+
+    /* Filters */
+    .filter-group { display: inline-flex; gap: 4px; padding: 3px; background: var(--bg); border-radius: 9px; }
+    .filter-button {
+      border: none; background: none; padding: 5px 12px; border-radius: 7px; cursor: pointer;
+      font-size: 0.84rem; color: var(--muted); font-weight: 600;
+    }
+    .filter-button.active { background: var(--surface); color: var(--navy); box-shadow: var(--shadow); }
+
+    /* Tables */
+    .table-wrapper { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
-    th { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
-    .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 0.85rem; }
-    .badge-low { background: var(--low-bg); color: var(--low-text); }
-    .badge-medium { background: var(--medium-bg); color: var(--medium-text); }
-    .badge-high { background: var(--high-bg); color: var(--high-text); }
-    .details-row td { background: #fafbfc; }
-    .details-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
-    .details-grid h3 { font-size: 0.95rem; margin: 0 0 6px; }
-    .details-grid ul { margin: 0; padding-left: 20px; }
-    .factor-note { color: var(--muted); font-size: 0.8rem; margin: 6px 0 0; }
-    .cached-tag { color: var(--muted); font-size: 0.8rem; }
-    .disclaimer { font-size: 0.9rem; color: var(--muted); border-left: 4px solid var(--medium-text); }
-    .hidden { display: none; }
-    @media (max-width: 640px) {
-      .details-grid { grid-template-columns: 1fr; }
-      .hide-mobile { display: none; }
+    th {
+      text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em;
+      color: var(--muted); font-weight: 600; padding: 10px 20px; background: var(--surface-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 12px 20px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tbody tr.prediction-row:hover { background: var(--surface-muted); }
+    .patient-id { font-weight: 600; color: var(--navy); }
+    .cached-tag {
+      display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px;
+      background: var(--teal-soft); color: var(--teal-dark); font-size: 0.72rem; font-weight: 600;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+      font-weight: 600; font-size: 0.8rem; white-space: nowrap;
+    }
+    .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .badge-low { background: var(--low-soft); color: var(--low-text); }
+    .badge-medium { background: var(--medium-soft); color: var(--medium-text); }
+    .badge-high { background: var(--high-soft); color: var(--high-text); }
+    .probability { display: flex; align-items: center; gap: 10px; min-width: 150px; }
+    .probability-track { flex: 1; max-width: 120px; height: 6px; border-radius: 999px; background: var(--bg); overflow: hidden; }
+    .probability-fill { height: 100%; border-radius: 999px; }
+    .fill-low { background: var(--low); }
+    .fill-medium { background: var(--medium); }
+    .fill-high { background: var(--high); }
+    .probability-value { font-weight: 600; color: var(--navy); font-variant-numeric: tabular-nums; min-width: 38px; }
+    .probability-split { font-size: 0.76rem; color: var(--muted); white-space: nowrap; }
+    .top-factor { font-size: 0.88rem; }
+    .details-button {
+      display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--navy); border-radius: 8px; padding: 5px 10px;
+      font-size: 0.84rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .details-button:hover { border-color: var(--teal); color: var(--teal-dark); }
+    .details-button svg { transition: transform 0.15s; }
+    .details-button[aria-expanded="true"] svg { transform: rotate(180deg); }
+    .col-actions { text-align: right; }
+
+    /* Expanded details */
+    .details-row > td { background: var(--surface-muted); padding: 0; }
+    .details-panel { display: grid; grid-template-columns: 1fr 1.3fr; gap: 16px; padding: 16px 20px 18px; align-items: start; }
+    .detail-section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .detail-section h3 { font-size: 0.9rem; margin-bottom: 10px; }
+    .factor-list, .recommendation-list { list-style: none; margin: 0; padding: 0; }
+    .factor-item { padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .factor-item:last-child { border-bottom: none; }
+    .factor-top { display: flex; justify-content: space-between; gap: 12px; font-size: 0.88rem; }
+    .factor-name { font-weight: 600; color: var(--navy); }
+    .factor-value { color: var(--muted); }
+    .factor-bar { height: 5px; margin: 6px 0 4px; border-radius: 999px; background: var(--bg); overflow: hidden; }
+    .factor-bar-fill { height: 100%; background: var(--teal); border-radius: 999px; }
+    .factor-bar-fill.negative { background: #94a3b8; }
+    .factor-effect { font-size: 0.78rem; color: var(--muted); }
+    .recommendation-list li {
+      display: flex; gap: 10px; padding: 7px 0; font-size: 0.9rem; border-bottom: 1px solid var(--border);
+    }
+    .recommendation-list li:last-child { border-bottom: none; }
+    .recommendation-list svg { flex-shrink: 0; margin-top: 3px; }
+    .detail-note { margin: 10px 0 0; font-size: 0.76rem; color: var(--muted); }
+
+    /* Empty states and rejected rows */
+    .empty-state { padding: 28px 20px; text-align: center; color: var(--muted); font-size: 0.92rem; }
+    .count-badge {
+      display: inline-block; margin-left: 8px; padding: 1px 9px; border-radius: 999px;
+      font-size: 0.78rem; font-weight: 700; vertical-align: middle;
+    }
+    .count-badge.rejected { background: var(--high-soft); color: var(--high-text); }
+    .row-number { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; }
+    .error-reason { color: var(--high-text); font-size: 0.9rem; }
+    .missing-id { color: var(--muted); font-style: italic; }
+
+    .disclaimer {
+      display: flex; gap: 12px; align-items: flex-start; padding: 14px 18px; font-size: 0.85rem;
+      color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .disclaimer svg { flex-shrink: 0; margin-top: 2px; }
+    .disclaimer strong { color: var(--navy); }
+
+    /* Responsive */
+    @media (max-width: 1000px) {
+      .stats-grid { grid-template-columns: repeat(3, 1fr); }
+      .col-top-factor { display: none; }
+    }
+    /* Grid children may shrink below their content width instead of pushing the page wider. */
+    .upload-layout > *, .stats-grid > *, .details-panel > * { min-width: 0; }
+    .dropzone-title, .dropzone-hint { overflow-wrap: anywhere; }
+
+    @media (max-width: 720px) {
+      .container { padding-left: 14px; padding-right: 14px; }
+      .app-header .container { height: auto; padding-top: 12px; padding-bottom: 12px; }
+      .model-status { padding: 5px 10px; }
+      .upload-layout { grid-template-columns: 1fr; }
+      .primary-button { min-height: 46px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .details-panel { grid-template-columns: 1fr; padding: 12px; }
+      th, td { padding-left: 12px; padding-right: 12px; }
+      .probability-split, .brand-tagline { display: none; }
+      .probability-track { display: none; }
+      .probability { min-width: 0; }
+      .details-button .details-label { display: none; }
     }
   </style>
 </head>
 <body>
-<main>
-  <h1>HealthTrack</h1>
-  <p class="subtitle">Upload patient health data as a CSV to see each patient's predicted risk level, the main contributing factors, and personalised recommendations.</p>
+<header class="app-header">
+  <div class="container">
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12h4l2-5 4 10 2-5h6"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">HealthTrack</div>
+        <div class="brand-tagline">Patient risk insights for health coaches</div>
+      </div>
+    </div>
+    <div id="model-status" class="model-status" role="status">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span id="model-status-text">Checking model…</span>
+    </div>
+  </div>
+</header>
 
-  <section class="card">
-    <h2>Upload patient data</h2>
-    <form id="upload-form" class="upload-row">
-      <input type="file" id="csv-file" name="file" accept=".csv,text/csv" required>
-      <button type="submit" id="submit-button">Upload and predict</button>
-    </form>
-    <p class="hint">CSV only, maximum 2 MB. Try <code>data/sample_patients.csv</code>, which includes some deliberately invalid rows.</p>
-    <div id="status" class="status" role="status" aria-live="polite"></div>
+<main class="container">
+  <div class="page-intro">
+    <h1>Patient risk dashboard</h1>
+    <p>Upload patient health data to see predicted risk levels, contributing factors and personalised recommendations.</p>
+  </div>
+
+  <section class="card" aria-labelledby="upload-title">
+    <div class="card-header">
+      <div>
+        <h2 id="upload-title">Upload patient data</h2>
+        <div class="card-subtitle">CSV file, up to 2 MB. Invalid rows are reported and skipped.</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <form id="upload-form" class="upload-layout">
+        <label id="dropzone" class="dropzone" for="csv-file">
+          <span class="dropzone-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M20 16v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3"/>
+            </svg>
+          </span>
+          <span>
+            <span class="dropzone-title">Drag and drop your CSV here, or <span class="browse-link">browse files</span></span>
+            <span class="dropzone-hint" style="display:block">Try <code>data/test_upload.csv</code> or <code>data/sample_patients.csv</code></span>
+            <span id="file-chip" class="file-chip">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" aria-hidden="true">
+                <path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/>
+              </svg>
+              <span id="file-name" class="file-chip-name"></span>
+              <span id="file-size" class="file-chip-size"></span>
+              <button type="button" id="clear-file" class="icon-button" aria-label="Remove selected file">×</button>
+            </span>
+          </span>
+          <input type="file" id="csv-file" class="visually-hidden" accept=".csv,text/csv">
+        </label>
+        <button type="submit" id="submit-button" class="primary-button" disabled>
+          <span id="submit-spinner" class="spinner hidden" aria-hidden="true"></span>
+          <span id="submit-label">Upload and predict</span>
+        </button>
+      </form>
+      <div id="status" class="alert hidden" role="status" aria-live="polite"></div>
+    </div>
   </section>
 
-  <section id="results-section" class="card hidden">
-    <h2>Predictions</h2>
-    <p id="results-summary" class="summary"></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Patient ID</th>
-          <th>Predicted risk</th>
-          <th class="hide-mobile">Probabilities (low / medium / high)</th>
-          <th>Details</th>
-        </tr>
-      </thead>
-      <tbody id="results-body"></tbody>
-    </table>
+  <section class="stats-grid" aria-label="Patient overview">
+    <div class="stat-card accent-navy">
+      <div class="stat-label">Total rows</div>
+      <div class="stat-value" id="stat-total">–</div>
+      <div class="stat-note">in uploaded file</div>
+    </div>
+    <div class="stat-card accent-teal">
+      <div class="stat-label">Predicted</div>
+      <div class="stat-value" id="stat-predicted">–</div>
+      <div class="stat-note" id="stat-predicted-note">valid patients</div>
+    </div>
+    <div class="stat-card accent-rejected">
+      <div class="stat-label">Rejected</div>
+      <div class="stat-value" id="stat-rejected">–</div>
+      <div class="stat-note">invalid records</div>
+    </div>
+    <div class="stat-card accent-low">
+      <div class="stat-label">Low risk</div>
+      <div class="stat-value" id="stat-low">–</div>
+      <div class="stat-note" id="stat-low-note">of predicted</div>
+    </div>
+    <div class="stat-card accent-medium">
+      <div class="stat-label">Medium risk</div>
+      <div class="stat-value" id="stat-medium">–</div>
+      <div class="stat-note" id="stat-medium-note">of predicted</div>
+    </div>
+    <div class="stat-card accent-high">
+      <div class="stat-label">High risk</div>
+      <div class="stat-value" id="stat-high">–</div>
+      <div class="stat-note" id="stat-high-note">of predicted</div>
+    </div>
   </section>
 
-  <section id="errors-section" class="card hidden">
-    <h2>Rows that could not be processed</h2>
-    <p class="summary">These rows were skipped. All other rows were processed normally.</p>
-    <table>
-      <thead><tr><th>Row</th><th>Patient ID</th><th>Reason</th></tr></thead>
-      <tbody id="errors-body"></tbody>
-    </table>
+  <section class="card" aria-labelledby="predictions-title">
+    <div class="card-header">
+      <div>
+        <h2 id="predictions-title">Predictions</h2>
+        <div class="card-subtitle" id="predictions-summary">No file processed yet.</div>
+      </div>
+      <div id="filter-group" class="filter-group hidden" role="group" aria-label="Filter by risk level">
+        <button type="button" class="filter-button active" data-filter="all">All</button>
+        <button type="button" class="filter-button" data-filter="high">High</button>
+        <button type="button" class="filter-button" data-filter="medium">Medium</button>
+        <button type="button" class="filter-button" data-filter="low">Low</button>
+      </div>
+    </div>
+    <div id="predictions-empty" class="empty-state">Upload a CSV file to see each patient's predicted risk level.</div>
+    <div id="predictions-table" class="table-wrapper hidden">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Patient ID</th>
+            <th scope="col">Risk level</th>
+            <th scope="col">Probability</th>
+            <th scope="col" class="col-top-factor">Top factor</th>
+            <th scope="col" class="col-actions"><span class="visually-hidden">Details</span></th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
   </section>
 
-  <section class="card disclaimer">
-    <strong>Disclaimer:</strong>
-    <span id="disclaimer">This application is an educational demonstration and does not provide medical advice, diagnosis, or treatment. Consult a qualified healthcare professional for medical decisions.</span>
-    The data and risk labels are synthetic.
+  <section id="errors-section" class="card hidden" aria-labelledby="errors-title">
+    <div class="card-header">
+      <div>
+        <h2 id="errors-title">Rejected rows <span id="errors-count" class="count-badge rejected"></span></h2>
+        <div class="card-subtitle">These rows were skipped. Fix them in the CSV and upload again. Row numbers match the file (the header is row 1).</div>
+      </div>
+    </div>
+    <div id="errors-empty" class="empty-state hidden">All rows passed validation.</div>
+    <div id="errors-table" class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th scope="col">Row</th><th scope="col">Patient ID</th><th scope="col">Reason</th></tr>
+        </thead>
+        <tbody id="errors-body"></tbody>
+      </table>
+    </div>
   </section>
+
+  <aside class="disclaimer">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" aria-hidden="true">
+      <circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/>
+    </svg>
+    <div>
+      <strong>Disclaimer:</strong>
+      <span id="disclaimer">This application is an educational demonstration and does not provide medical advice, diagnosis, or treatment. Consult a qualified healthcare professional for medical decisions.</span>
+      All data and risk labels are synthetic.
+    </div>
+  </aside>
 </main>
 
+<template id="chevron-icon">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+</template>
+<template id="check-icon">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17 19 7"/></svg>
+</template>
+
 <script>
-  const form = document.getElementById("upload-form");
-  const fileInput = document.getElementById("csv-file");
-  const submitButton = document.getElementById("submit-button");
-  const statusBox = document.getElementById("status");
-  const resultsSection = document.getElementById("results-section");
-  const resultsBody = document.getElementById("results-body");
-  const resultsSummary = document.getElementById("results-summary");
-  const errorsSection = document.getElementById("errors-section");
-  const errorsBody = document.getElementById("errors-body");
+  const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
+  const RISK_LEVELS = ["low", "medium", "high"];
 
   const FEATURE_LABELS = {
-    age: "Age", sex: "Sex", bmi: "BMI", systolic_bp: "Systolic blood pressure",
-    diastolic_bp: "Diastolic blood pressure", resting_hr: "Resting heart rate",
-    glucose: "Blood glucose", cholesterol: "Cholesterol", smoker: "Smoking status",
-    alcohol_units_week: "Alcohol (units/week)", exercise_days_week: "Exercise (days/week)",
-    sleep_hours: "Sleep (hours)", family_history: "Family history",
+    age: "Age", sex: "Sex", bmi: "BMI", systolic_bp: "Systolic BP", diastolic_bp: "Diastolic BP",
+    resting_hr: "Resting heart rate", glucose: "Blood glucose", cholesterol: "Cholesterol",
+    smoker: "Smoking status", alcohol_units_week: "Alcohol", exercise_days_week: "Exercise",
+    sleep_hours: "Sleep", family_history: "Family history",
+  };
+  const FEATURE_UNITS = {
+    age: "years", systolic_bp: "mmHg", diastolic_bp: "mmHg", resting_hr: "bpm", glucose: "mg/dL",
+    cholesterol: "mg/dL", alcohol_units_week: "units/week", exercise_days_week: "days/week", sleep_hours: "hours",
   };
 
+  const form = document.getElementById("upload-form");
+  const fileInput = document.getElementById("csv-file");
+  const dropzone = document.getElementById("dropzone");
+  const fileChip = document.getElementById("file-chip");
+  const submitButton = document.getElementById("submit-button");
+  const statusBox = document.getElementById("status");
+  const resultsBody = document.getElementById("results-body");
+  const filterGroup = document.getElementById("filter-group");
+
+  let selectedFile = null;
+  let activeFilter = "all";
+
+  // ---------- Small DOM helpers ----------
+  // Every value from the server is inserted with textContent, so text from a
+  // CSV can never be interpreted as HTML.
+  function createElement(tag, className, text) {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    if (text !== undefined && text !== null) element.textContent = text;
+    return element;
+  }
+
+  function cloneIcon(templateId) {
+    return document.getElementById(templateId).content.firstElementChild.cloneNode(true);
+  }
+
+  function formatPercent(value) {
+    return `${Math.round(value * 100)}%`;
+  }
+
+  function formatFileSize(bytes) {
+    return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function formatFactorValue(factor) {
+    if (factor.value === null) return "missing (estimated)";
+    const unit = FEATURE_UNITS[factor.feature];
+    return unit ? `${factor.value} ${unit}` : String(factor.value);
+  }
+
+  // ---------- Model status ----------
+  async function loadModelStatus() {
+    const statusElement = document.getElementById("model-status");
+    const statusText = document.getElementById("model-status-text");
+    try {
+      const response = await fetch("/health");
+      const health = await response.json();
+      if (health.model_loaded) {
+        statusElement.classList.add("ready");
+        statusText.textContent = `Model v${health.model_version} ready`;
+      } else {
+        statusElement.classList.add("unavailable");
+        statusText.textContent = "Model not loaded";
+      }
+    } catch (error) {
+      statusElement.classList.add("unavailable");
+      statusText.textContent = "Server unavailable";
+    }
+  }
+
+  // ---------- File selection and drag and drop ----------
+  function selectFile(file) {
+    hideStatus();
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      clearFile();
+      showStatus("error", "Please choose a .csv file.");
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      clearFile();
+      showStatus("error", "This file is larger than 2 MB. Please upload a smaller CSV.");
+      return;
+    }
+    selectedFile = file;
+    document.getElementById("file-name").textContent = file.name;
+    document.getElementById("file-size").textContent = formatFileSize(file.size);
+    fileChip.classList.add("visible");
+    submitButton.disabled = false;
+  }
+
+  function clearFile() {
+    selectedFile = null;
+    fileInput.value = "";
+    fileChip.classList.remove("visible");
+    submitButton.disabled = true;
+  }
+
+  fileInput.addEventListener("change", () => selectFile(fileInput.files[0]));
+
+  document.getElementById("clear-file").addEventListener("click", (event) => {
+    // The button sits inside the dropzone label; stop it from opening the file picker.
+    event.preventDefault();
+    event.stopPropagation();
+    clearFile();
+  });
+
+  ["dragenter", "dragover"].forEach((eventName) =>
+    dropzone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      dropzone.classList.add("dragging");
+    })
+  );
+  ["dragleave", "drop"].forEach((eventName) =>
+    dropzone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      dropzone.classList.remove("dragging");
+    })
+  );
+  dropzone.addEventListener("drop", (event) => selectFile(event.dataTransfer.files[0]));
+
+  // ---------- Upload ----------
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const file = fileInput.files[0];
-    if (!file) {
-      showError("Please choose a CSV file first.");
+    if (!selectedFile) {
+      showStatus("error", "Please choose a CSV file first.");
       return;
     }
 
     setLoading(true);
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", selectedFile);
 
     try {
       const response = await fetch("/predict/upload", { method: "POST", body: formData });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        showError(data.detail || `Upload failed (HTTP ${response.status}).`);
+        showStatus("error", data.detail || `Upload failed (HTTP ${response.status}).`);
         return;
       }
-      statusBox.textContent = "";
       renderResults(data);
     } catch (error) {
-      showError("Could not reach the server. Is it running?");
+      showStatus("error", "Could not reach the server. Please check that it is running.");
     } finally {
       setLoading(false);
     }
   });
 
   function setLoading(isLoading) {
-    submitButton.disabled = isLoading;
-    submitButton.textContent = isLoading ? "Processing..." : "Upload and predict";
-    if (isLoading) {
-      statusBox.className = "status loading";
-      statusBox.textContent = "Processing your file...";
-    }
+    submitButton.disabled = isLoading || !selectedFile;
+    document.getElementById("submit-spinner").classList.toggle("hidden", !isLoading);
+    document.getElementById("submit-label").textContent = isLoading ? "Processing…" : "Upload and predict";
   }
 
-  function showError(message) {
-    statusBox.className = "status error";
+  function showStatus(type, message) {
+    statusBox.className = `alert alert-${type}`;
     statusBox.textContent = message;
-    resultsSection.classList.add("hidden");
-    errorsSection.classList.add("hidden");
   }
 
-  // Helper that always uses textContent, so values from the CSV are shown as
-  // text and can never be interpreted as HTML.
-  function createElement(tag, text, className) {
-    const element = document.createElement(tag);
-    if (text !== undefined) element.textContent = text;
-    if (className) element.className = className;
-    return element;
+  function hideStatus() {
+    statusBox.className = "alert hidden";
   }
 
+  // ---------- Rendering ----------
   function renderResults(data) {
-    resultsBody.replaceChildren();
-    errorsBody.replaceChildren();
     document.getElementById("disclaimer").textContent = data.disclaimer;
+    const predictions = data.predictions;
+    const cachedCount = predictions.filter((prediction) => prediction.cached).length;
 
-    const cachedCount = data.predictions.filter((prediction) => prediction.cached).length;
-    resultsSummary.textContent =
-      `${data.total_rows} rows received: ${data.predictions.length} predicted, ` +
-      `${data.row_errors.length} rejected. Processed in ${data.processing_time_ms} ms ` +
-      `(${cachedCount} served from cache). Model version ${data.model_version}.`;
-    data.predictions.forEach((prediction, index) => addPredictionRows(prediction, index));
-    resultsSection.classList.remove("hidden");
+    showStatus(
+      "success",
+      `Processed ${data.total_rows} rows in ${data.processing_time_ms} ms` +
+        (cachedCount ? ` (${cachedCount} served from cache).` : ".")
+    );
+    renderStats(data);
 
-    data.row_errors.forEach((rowError) => {
-      const row = document.createElement("tr");
-      row.append(
-        createElement("td", String(rowError.row_number)),
-        createElement("td", rowError.patient_id || "(missing)"),
-        createElement("td", rowError.reason),
-      );
-      errorsBody.append(row);
+    document.getElementById("predictions-summary").textContent =
+      `${predictions.length} patients predicted · model version ${data.model_version}`;
+
+    resultsBody.replaceChildren();
+    predictions.forEach((prediction, index) => addPredictionRows(prediction, index));
+    const hasPredictions = predictions.length > 0;
+    document.getElementById("predictions-table").classList.toggle("hidden", !hasPredictions);
+    document.getElementById("predictions-empty").classList.toggle("hidden", hasPredictions);
+    document.getElementById("predictions-empty").textContent = "No valid patients were found in this file.";
+    filterGroup.classList.toggle("hidden", !hasPredictions);
+    setFilter("all");
+
+    renderRowErrors(data.row_errors);
+  }
+
+  function renderStats(data) {
+    const predictedCount = data.predictions.length;
+    document.getElementById("stat-total").textContent = data.total_rows;
+    document.getElementById("stat-predicted").textContent = predictedCount;
+    document.getElementById("stat-rejected").textContent = data.row_errors.length;
+    document.getElementById("stat-predicted-note").textContent =
+      data.total_rows ? `${formatPercent(predictedCount / data.total_rows)} of rows` : "valid patients";
+
+    RISK_LEVELS.forEach((level) => {
+      const count = data.predictions.filter((prediction) => prediction.risk_level === level).length;
+      document.getElementById(`stat-${level}`).textContent = count;
+      document.getElementById(`stat-${level}-note`).textContent =
+        predictedCount ? `${formatPercent(count / predictedCount)} of predicted` : "of predicted";
     });
-    errorsSection.classList.toggle("hidden", data.row_errors.length === 0);
   }
 
   function addPredictionRows(prediction, index) {
-    const summaryRow = document.createElement("tr");
-    const idCell = createElement("td", prediction.patient_id);
-    if (prediction.cached) idCell.append(" ", createElement("span", "(cached)", "cached-tag"));
+    const level = prediction.risk_level;
+    const row = createElement("tr", "prediction-row");
+    row.dataset.risk = level;
 
-    const riskCell = document.createElement("td");
-    riskCell.append(createElement("span", prediction.risk_label, `badge badge-${prediction.risk_level}`));
+    const idCell = createElement("td");
+    idCell.append(createElement("span", "patient-id", prediction.patient_id));
+    if (prediction.cached) idCell.append(createElement("span", "cached-tag", "cached"));
+
+    const riskCell = createElement("td");
+    riskCell.append(createElement("span", `badge badge-${level}`, prediction.risk_label));
 
     const probabilities = prediction.probabilities;
-    const probabilityText = [probabilities.low, probabilities.medium, probabilities.high]
-      .map((value) => `${Math.round(value * 100)}%`).join(" / ");
+    const probabilityCell = createElement("td");
+    const probability = createElement("div", "probability");
+    const track = createElement("div", "probability-track");
+    const fill = createElement("div", `probability-fill fill-${level}`);
+    fill.style.width = formatPercent(probabilities[level]);
+    track.append(fill);
+    probability.append(
+      track,
+      createElement("span", "probability-value", formatPercent(probabilities[level])),
+      createElement(
+        "span",
+        "probability-split",
+        `L ${formatPercent(probabilities.low)} · M ${formatPercent(probabilities.medium)} · H ${formatPercent(probabilities.high)}`
+      )
+    );
+    probabilityCell.append(probability);
+
+    const topFactor = prediction.top_factors[0];
+    const topFactorCell = createElement(
+      "td",
+      "col-top-factor top-factor",
+      topFactor ? FEATURE_LABELS[topFactor.feature] || topFactor.feature : "–"
+    );
 
     const detailsId = `details-${index}`;
-    const toggleButton = createElement("button", "Show details", "link-button");
+    const toggleButton = createElement("button", "details-button");
     toggleButton.type = "button";
     toggleButton.setAttribute("aria-expanded", "false");
     toggleButton.setAttribute("aria-controls", detailsId);
-    const toggleCell = document.createElement("td");
-    toggleCell.append(toggleButton);
+    toggleButton.append(createElement("span", "details-label", "Details"), cloneIcon("chevron-icon"));
+    const actionsCell = createElement("td", "col-actions");
+    actionsCell.append(toggleButton);
 
-    summaryRow.append(idCell, riskCell, createElement("td", probabilityText, "hide-mobile"), toggleCell);
+    row.append(idCell, riskCell, probabilityCell, topFactorCell, actionsCell);
 
-    const detailsRow = createElement("tr", undefined, "details-row hidden");
+    const detailsRow = createElement("tr", "details-row hidden");
     detailsRow.id = detailsId;
-    const detailsCell = document.createElement("td");
-    detailsCell.colSpan = 4;
-    detailsCell.append(buildDetails(prediction));
+    detailsRow.dataset.risk = level;
+    const detailsCell = createElement("td");
+    detailsCell.colSpan = 5;
+    detailsCell.append(buildDetailsPanel(prediction));
     detailsRow.append(detailsCell);
 
     toggleButton.addEventListener("click", () => {
-      const isHidden = detailsRow.classList.toggle("hidden");
-      toggleButton.textContent = isHidden ? "Show details" : "Hide details";
-      toggleButton.setAttribute("aria-expanded", String(!isHidden));
+      const isNowHidden = detailsRow.classList.toggle("hidden");
+      toggleButton.setAttribute("aria-expanded", String(!isNowHidden));
     });
 
-    resultsBody.append(summaryRow, detailsRow);
+    resultsBody.append(row, detailsRow);
   }
 
-  function buildDetails(prediction) {
-    const grid = createElement("div", undefined, "details-grid");
+  function buildDetailsPanel(prediction) {
+    const panel = createElement("div", "details-panel");
 
-    const factorsBlock = document.createElement("div");
-    factorsBlock.append(createElement("h3", "Top contributing factors"));
-    const factorList = document.createElement("ul");
+    // Contributing factors, with bars scaled to the largest contribution for this patient.
+    const factorSection = createElement("section", "detail-section");
+    factorSection.append(createElement("h3", null, "Top contributing factors"));
+    const factorList = createElement("ul", "factor-list");
+    const largest = Math.max(...prediction.top_factors.map((factor) => Math.abs(factor.contribution)), 0.0001);
+
     prediction.top_factors.forEach((factor) => {
-      const label = FEATURE_LABELS[factor.feature] || factor.feature;
-      const value = factor.value === null ? "missing (estimated)" : factor.value;
-      const effect = factor.direction === "increases" ? "supports" : "weighs against";
+      const item = createElement("li", "factor-item");
+      const top = createElement("div", "factor-top");
+      top.append(
+        createElement("span", "factor-name", FEATURE_LABELS[factor.feature] || factor.feature),
+        createElement("span", "factor-value", formatFactorValue(factor))
+      );
+
+      const bar = createElement("div", "factor-bar");
+      const barFill = createElement("div", factor.direction === "increases" ? "factor-bar-fill" : "factor-bar-fill negative");
+      barFill.style.width = `${Math.round((Math.abs(factor.contribution) / largest) * 100)}%`;
+      bar.append(barFill);
+
+      const effect = factor.direction === "increases" ? "Supports" : "Weighs against";
       const sign = factor.contribution >= 0 ? "+" : "";
-      factorList.append(createElement(
-        "li",
-        `${label} = ${value}: ${effect} ${prediction.risk_label} (${sign}${factor.contribution.toFixed(2)})`,
-      ));
+      item.append(
+        top,
+        bar,
+        createElement("div", "factor-effect", `${effect} ${prediction.risk_label} (${sign}${factor.contribution.toFixed(2)})`)
+      );
+      factorList.append(item);
     });
-    factorsBlock.append(
+    factorSection.append(
       factorList,
-      createElement("p", "Approximate model contributions towards the predicted level, not medical causes.", "factor-note"),
+      createElement("p", "detail-note", "Approximate model contributions towards the predicted level, not medical causes.")
     );
 
-    const recommendationsBlock = document.createElement("div");
-    recommendationsBlock.append(createElement("h3", "Recommendations"));
-    const recommendationList = document.createElement("ul");
-    prediction.recommendations.forEach((text) => recommendationList.append(createElement("li", text)));
-    recommendationsBlock.append(recommendationList);
+    // Personalised recommendations.
+    const recommendationSection = createElement("section", "detail-section");
+    recommendationSection.append(createElement("h3", null, "Personalised recommendations"));
+    const recommendationList = createElement("ul", "recommendation-list");
+    prediction.recommendations.forEach((text) => {
+      const item = createElement("li");
+      item.append(cloneIcon("check-icon"), createElement("span", null, text));
+      recommendationList.append(item);
+    });
+    recommendationSection.append(recommendationList);
 
-    grid.append(factorsBlock, recommendationsBlock);
-    return grid;
+    panel.append(factorSection, recommendationSection);
+    return panel;
   }
+
+  function renderRowErrors(rowErrors) {
+    const errorsBody = document.getElementById("errors-body");
+    errorsBody.replaceChildren();
+    document.getElementById("errors-section").classList.remove("hidden");
+    document.getElementById("errors-count").textContent = rowErrors.length;
+    document.getElementById("errors-count").classList.toggle("hidden", rowErrors.length === 0);
+    document.getElementById("errors-table").classList.toggle("hidden", rowErrors.length === 0);
+    document.getElementById("errors-empty").classList.toggle("hidden", rowErrors.length > 0);
+
+    rowErrors.forEach((rowError) => {
+      const row = createElement("tr");
+      const idCell = rowError.patient_id
+        ? createElement("td", "patient-id", rowError.patient_id)
+        : createElement("td", "missing-id", "missing");
+      row.append(
+        createElement("td", "row-number", String(rowError.row_number)),
+        idCell,
+        createElement("td", "error-reason", rowError.reason)
+      );
+      errorsBody.append(row);
+    });
+  }
+
+  // ---------- Risk filter ----------
+  function setFilter(filter) {
+    activeFilter = filter;
+    filterGroup.querySelectorAll(".filter-button").forEach((button) => {
+      const isActive = button.dataset.filter === filter;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
+    resultsBody.querySelectorAll("tr.prediction-row").forEach((row) => {
+      const matches = filter === "all" || row.dataset.risk === filter;
+      row.classList.toggle("hidden", !matches);
+      // Hide (and collapse) the details row too when its patient is filtered out.
+      const detailsRow = row.nextElementSibling;
+      const toggleButton = row.querySelector(".details-button");
+      if (!matches && detailsRow) {
+        detailsRow.classList.add("hidden");
+        toggleButton.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+
+  filterGroup.addEventListener("click", (event) => {
+    const button = event.target.closest(".filter-button");
+    if (button) setFilter(button.dataset.filter);
+  });
+
+  loadModelStatus();
 </script>
 </body>
 </html>
