@@ -177,7 +177,7 @@ def main(arguments: list[str] | None = None) -> int:
         print(f"Error: {error}")
         return 1
 
-    result.to_dataframe().to_csv(output_path, index=False)
+    result.to_dataframe().to_csv(output_path, index=False, lineterminator="\n")
     print(f"Cleaned dataset: {len(result.patients)} of {result.total_rows} rows written to {output_path}")
     for row_error in result.row_errors:
         print(f"  Rejected row {row_error.row_number} ({row_error.patient_id or 'no id'}): {row_error.reason}")

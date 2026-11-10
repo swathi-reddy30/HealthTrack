@@ -117,7 +117,7 @@ def main() -> None:
         print(f"\nWARNING: validation accuracy is below the {TARGET_ACCURACY} target.")
 
     save_model(pipeline, settings.model_path, MODEL_VERSION)
-    METRICS_PATH.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+    METRICS_PATH.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"\nSaved model to {settings.model_path}")
     print(f"Saved metrics to {METRICS_PATH}")
 

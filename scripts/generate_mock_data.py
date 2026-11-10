@@ -142,13 +142,14 @@ def build_sample_upload() -> pd.DataFrame:
 def main() -> None:
     patients = generate_patients()
     TRAINING_DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
-    patients.to_csv(TRAINING_DATA_PATH, index=False)
+    # lineterminator="\n" makes the file byte-for-byte identical on Windows, macOS and Linux.
+    patients.to_csv(TRAINING_DATA_PATH, index=False, lineterminator="\n")
     print(f"Saved {len(patients)} synthetic patients to {TRAINING_DATA_PATH}")
     print("Class distribution:")
     print(patients["risk_level"].value_counts().to_string())
 
     sample = build_sample_upload()
-    sample.to_csv(SAMPLE_DATA_PATH, index=False)
+    sample.to_csv(SAMPLE_DATA_PATH, index=False, lineterminator="\n")
     print(f"Saved demo upload file with {len(sample)} rows to {SAMPLE_DATA_PATH}")
 
 
