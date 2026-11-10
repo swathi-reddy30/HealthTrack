@@ -1,7 +1,7 @@
 """Generate a reproducible synthetic patient dataset.
 
 IMPORTANT: every value and every label here is made up. The labels come from
-the simple points-based rule in calculate_risk_points(), not from real
+the simple weighted scoring rule in calculate_risk_score(), not from real
 clinical outcomes. The dataset only exists to demonstrate the software.
 
 Run from the project root:
@@ -20,12 +20,31 @@ SAMPLE_DATA_PATH = PROJECT_ROOT / "data" / "sample_patients.csv"
 NUMBER_OF_PATIENTS = 1000
 RANDOM_SEED = 42
 SAMPLE_RANDOM_SEED = 2024  # a different seed so the demo file isn't a copy of training rows
-NOISE_STANDARD_DEVIATION = 1.0
+NOISE_STANDARD_DEVIATION = 0.5
 MISSING_VALUE_RATE = 0.02
 
-# Total points below LOW_RISK_MAX_POINTS -> "low"; at or above HIGH_RISK_MIN_POINTS -> "high".
-LOW_RISK_MAX_POINTS = 3.5
-HIGH_RISK_MIN_POINTS = 6.0
+# The made-up risk score: for each numeric feature, (reference value, points
+# per unit above the reference). Below the reference the points are negative,
+# e.g. age 60 adds (60 - 50) * 0.05 = +0.5 and age 40 adds -0.5.
+# Negative weights mean "more is healthier" (exercise, sleep).
+NUMERIC_RISK_WEIGHTS = {
+    "age": (50, 0.05),
+    "bmi": (25, 0.12),
+    "systolic_bp": (120, 0.04),
+    "glucose": (95, 0.025),
+    "cholesterol": (200, 0.01),
+    "resting_hr": (72, 0.02),
+    "alcohol_units_week": (7, 0.04),
+    "exercise_days_week": (3.5, -0.15),
+    "sleep_hours": (7, -0.3),
+}
+SMOKER_POINTS = {"never": 0.0, "former": 0.4, "current": 1.0}
+FAMILY_HISTORY_POINTS = 0.5
+
+# Score below LOW_RISK_MAX_SCORE -> "low"; at or above HIGH_RISK_MIN_SCORE -> "high".
+# Chosen to give roughly 38% low, 38% medium and 24% high.
+LOW_RISK_MAX_SCORE = 0.5
+HIGH_RISK_MIN_SCORE = 2.5
 
 # Columns that get a few blank values, so the model's imputation is exercised.
 COLUMNS_WITH_MISSING_VALUES = ["bmi", "glucose", "cholesterol", "sleep_hours", "smoker"]
@@ -62,33 +81,26 @@ def generate_patient_features(n_patients: int, rng: np.random.Generator) -> pd.D
     )
 
 
-def calculate_risk_points(patients: pd.DataFrame) -> pd.Series:
-    """A transparent, made-up scoring rule. More points = higher synthetic risk."""
-    points = pd.Series(0.0, index=patients.index)
-    points += np.select([patients["age"] >= 60, patients["age"] >= 45], [2, 1], default=0)
-    points += np.select([patients["bmi"] >= 30, patients["bmi"] >= 25], [2, 1], default=0)
-    points += np.select([patients["systolic_bp"] >= 140, patients["systolic_bp"] >= 130], [2, 1], default=0)
-    points += np.select([patients["glucose"] >= 126, patients["glucose"] >= 100], [2, 1], default=0)
-    points += (patients["cholesterol"] >= 240).astype(int)
-    points += patients["smoker"].map({"current": 2, "former": 1, "never": 0})
-    points += (patients["alcohol_units_week"] > 14).astype(int)
-    points += np.select([patients["exercise_days_week"] < 2, patients["exercise_days_week"] >= 5], [1, -1], default=0)
-    points += (patients["sleep_hours"] < 6).astype(int)
-    points += (patients["family_history"] == "yes").astype(int)
-    points += (patients["resting_hr"] > 90).astype(int)
-    return points
+def calculate_risk_score(patients: pd.DataFrame) -> pd.Series:
+    """A transparent, made-up weighted score. Higher score = higher synthetic risk."""
+    score = pd.Series(0.0, index=patients.index)
+    for feature, (reference_value, points_per_unit) in NUMERIC_RISK_WEIGHTS.items():
+        score += (patients[feature] - reference_value) * points_per_unit
+    score += patients["smoker"].map(SMOKER_POINTS)
+    score += (patients["family_history"] == "yes") * FAMILY_HISTORY_POINTS
+    return score
 
 
-def assign_risk_levels(points: pd.Series, rng: np.random.Generator) -> pd.Series:
+def assign_risk_levels(score: pd.Series, rng: np.random.Generator) -> pd.Series:
     # Random noise means two similar patients can get different labels, so the
     # model can't simply memorise the rule (real data is never perfectly clean).
-    noisy_points = points + rng.normal(0, NOISE_STANDARD_DEVIATION, len(points))
+    noisy_score = score + rng.normal(0, NOISE_STANDARD_DEVIATION, len(score))
     levels = np.select(
-        [noisy_points < LOW_RISK_MAX_POINTS, noisy_points >= HIGH_RISK_MIN_POINTS],
+        [noisy_score < LOW_RISK_MAX_SCORE, noisy_score >= HIGH_RISK_MIN_SCORE],
         ["low", "high"],
         default="medium",
     )
-    return pd.Series(levels, index=points.index)
+    return pd.Series(levels, index=score.index)
 
 
 def add_missing_values(patients: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
@@ -105,7 +117,7 @@ def generate_patients(n_patients: int = NUMBER_OF_PATIENTS, seed: int = RANDOM_S
     patients = generate_patient_features(n_patients, rng)
     # Labels are calculated from the complete values *before* blanks are added,
     # like a real measurement that exists but wasn't recorded.
-    patients["risk_level"] = assign_risk_levels(calculate_risk_points(patients), rng)
+    patients["risk_level"] = assign_risk_levels(calculate_risk_score(patients), rng)
     return add_missing_values(patients, rng)
 
 
