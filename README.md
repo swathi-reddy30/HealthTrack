@@ -175,6 +175,15 @@ them to reproduce or regenerate those files.
 - **UI:** open <http://127.0.0.1:8000> and upload `data/sample_patients.csv`
 - **Interactive API docs:** <http://127.0.0.1:8000/docs>
 
+**Test data files** (in `data/`, all synthetic and without risk labels):
+
+| File | Rows | What it demonstrates |
+|---|---|---|
+| `sample_patients.csv` | 18 | 12 valid patients and 6 invalid rows |
+| `test_upload.csv` | 21 | Clear low/medium/high profiles, blank values (imputed), mixed-case values, and 7 invalid rows (out of range, wrong category, not a number, missing ID, duplicate) |
+| `test_edge_cases.csv` | 17 | Reordered and mixed-case columns, an extra column, a `risk_level` column that is ignored, exact boundary values, a row with only an ID, and rows just outside the allowed ranges |
+| `test_demo_40.csv` | 40 | A batch of new, valid patients. Upload it twice to see the cache: all rows marked "cached" and a lower processing time |
+
 **Run the tests**
 
 ```powershell
@@ -566,8 +575,6 @@ in `models/`.
 
 ## 12. AI Usage
 
-> **Draft: please complete and correct the parts marked TODO so they describe your own work accurately.**
-
 **Tools used**
 
 | Tool | What it was used for |
@@ -587,12 +594,25 @@ in `tests/`, `index.html`, and this README.
   requirement can be shown directly. Training data now goes through the same validation.
 - Logging was added for rejected file types, and `processing_time_ms` was added so the effect of caching
   is visible.
-- `[TODO: add any changes you made yourself]`
+- After reviewing the first version of the UI, I asked for it to be redesigned as a dashboard. The new
+  version has overview cards, drag-and-drop upload, a risk filter, and expandable factor and
+  recommendation panels.
 
 **What I verified**
 
-- `[TODO: e.g. ran pytest myself and read the tests to check they test real behaviour]`
-- `[TODO: e.g. uploaded data/sample_patients.csv in the UI and checked the predictions, row errors and cache flag]`
-- `[TODO: e.g. checked the metrics in models/metrics.json against the training script output]`
-- `[TODO: e.g. read through each module and can explain the request flow, preprocessing, contributions and cache]`
-- `[TODO: e.g. checked that no secrets, logs or .env files are committed]`
+- Compared the first version of the build against the assignment brief. This showed it did not meet the
+  brief: validation accuracy was 69% (below the required 75%), and the ingestion module could not produce
+  a cleaned dataset on its own. I had both fixed, then checked the new results: 88.5% validation accuracy
+  and 84.4% in cross-validation.
+- Uploaded three test files through the UI: a file with valid, missing-value and invalid rows; an
+  edge-case file with reordered, mixed-case and extra columns, boundary values, and a wrong `risk_level`
+  column; and a 40-patient batch. I checked that valid rows were predicted, that rejected rows showed the
+  correct row number and reason, and that the extra columns and labels were ignored.
+- Asked targeted questions and checked the answers against the code and outputs:
+  - Is accuracy measured on held-out data?
+  - Is a row with blank values (MISS01) filled in by imputation rather than rejected?
+  - Can new patients be predicted without a `risk_level` column?
+  - Does the full CSV → prediction → recommendation flow work?
+  - How does the cache work internally?
+- Reviewed the first UI, decided it looked too basic, and asked for a dashboard-style redesign. I then
+  re-tested it with the same three files.
