@@ -1,0 +1,16 @@
+# Web API
+fastapi==0.162.4
+uvicorn[standard]==0.54.0
+python-multipart==0.0.33
+pydantic==2.14.3
+python-dotenv==1.2.4
+
+# Data and machine learning
+pandas==3.1.1
+numpy==2.5.4
+scikit-learn==1.9.1
+joblib==1.6.0
+
+# Testing (httpx2 is used by FastAPI's TestClient)
+pytest==9.2.0
+httpx2==2.16.0
