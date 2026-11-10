@@ -69,6 +69,17 @@ class PatientInput(BaseModel):
         return self
 
 
+class LabelledPatientInput(PatientInput):
+    """A training row: patient data plus the known risk level."""
+
+    risk_level: RiskLevel
+
+    @field_validator("risk_level", mode="before")
+    @classmethod
+    def normalise_label(cls, value):
+        return value.strip().lower() if isinstance(value, str) else value
+
+
 class PredictRequest(BaseModel):
     patients: list[PatientInput] = Field(min_length=1, max_length=1000)
 
@@ -108,6 +119,8 @@ class RowError(BaseModel):
 class PredictionResponse(BaseModel):
     model_version: str
     total_rows: int
+    # Server-side time for this request, so the speed-up from caching is visible.
+    processing_time_ms: float
     predictions: list[PatientPrediction]
     row_errors: list[RowError] = []
     disclaimer: str

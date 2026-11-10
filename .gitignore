@@ -13,6 +13,9 @@ __pycache__/
 htmlcov/
 *.egg-info/
 
+# Generated outputs
+data/*_cleaned.csv
+
 # Runtime logs
 logs/
 
