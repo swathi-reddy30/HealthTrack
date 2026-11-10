@@ -5,15 +5,22 @@ models/, so they are fast and don't depend on the training script being run.
 """
 
 import io
+import os
+import tempfile
 
-import pandas as pd
-import pytest
-from fastapi.testclient import TestClient
+# Send test logs to a temporary folder so running pytest never fills the
+# real logs/healthtrack.log. This must happen before "app" is imported,
+# because the settings are read once at import time.
+os.environ["LOG_DIR"] = tempfile.mkdtemp(prefix="healthtrack-test-logs-")
 
-from app.main import app
-from app.model import RiskModel, train_model
-from app.preprocessing import TARGET_COLUMN, prepare_features
-from scripts.generate_mock_data import generate_patients
+import pandas as pd  # noqa: E402
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.main import app  # noqa: E402
+from app.model import RiskModel, train_model  # noqa: E402
+from app.preprocessing import TARGET_COLUMN, prepare_features  # noqa: E402
+from scripts.generate_mock_data import generate_patients  # noqa: E402
 
 TEST_MODEL_VERSION = "test-1.0"
 
