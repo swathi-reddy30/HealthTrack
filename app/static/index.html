@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HealthTrack</title>
+  <style>
+    :root {
+      --text: #1f2933;
+      --muted: #616e7c;
+      --border: #d9e2ec;
+      --background: #f5f7fa;
+      --primary: #2563eb;
+      --low-bg: #dcfce7;   --low-text: #166534;
+      --medium-bg: #fef9c3; --medium-text: #854d0e;
+      --high-bg: #fee2e2;  --high-text: #991b1b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: var(--text);
+      background: var(--background);
+      line-height: 1.5;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 32px 16px; }
+    h1 { margin: 0 0 4px; }
+    .subtitle { color: var(--muted); margin: 0 0 24px; }
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card h2 { margin-top: 0; font-size: 1.15rem; }
+    .upload-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    button {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 18px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .link-button { background: none; color: var(--primary); padding: 0; font-size: 0.95rem; }
+    .hint { color: var(--muted); font-size: 0.9rem; margin: 10px 0 0; }
+    .status { margin-top: 12px; }
+    .error { color: var(--high-text); background: var(--high-bg); padding: 10px 12px; border-radius: 6px; }
+    .loading { color: var(--muted); }
+    .summary { color: var(--muted); margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 0.85rem; }
+    .badge-low { background: var(--low-bg); color: var(--low-text); }
+    .badge-medium { background: var(--medium-bg); color: var(--medium-text); }
+    .badge-high { background: var(--high-bg); color: var(--high-text); }
+    .details-row td { background: #fafbfc; }
+    .details-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+    .details-grid h3 { font-size: 0.95rem; margin: 0 0 6px; }
+    .details-grid ul { margin: 0; padding-left: 20px; }
+    .factor-note { color: var(--muted); font-size: 0.8rem; margin: 6px 0 0; }
+    .cached-tag { color: var(--muted); font-size: 0.8rem; }
+    .disclaimer { font-size: 0.9rem; color: var(--muted); border-left: 4px solid var(--medium-text); }
+    .hidden { display: none; }
+    @media (max-width: 640px) {
+      .details-grid { grid-template-columns: 1fr; }
+      .hide-mobile { display: none; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>HealthTrack</h1>
+  <p class="subtitle">Upload patient health data as a CSV to see each patient's predicted risk level, the main contributing factors, and personalised recommendations.</p>
+
+  <section class="card">
+    <h2>Upload patient data</h2>
+    <form id="upload-form" class="upload-row">
+      <input type="file" id="csv-file" name="file" accept=".csv,text/csv" required>
+      <button type="submit" id="submit-button">Upload and predict</button>
+    </form>
+    <p class="hint">CSV only, maximum 2 MB. Try <code>data/sample_patients.csv</code>, which includes some deliberately invalid rows.</p>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+  </section>
+
+  <section id="results-section" class="card hidden">
+    <h2>Predictions</h2>
+    <p id="results-summary" class="summary"></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Patient ID</th>
+          <th>Predicted risk</th>
+          <th class="hide-mobile">Probabilities (low / medium / high)</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+  </section>
+
+  <section id="errors-section" class="card hidden">
+    <h2>Rows that could not be processed</h2>
+    <p class="summary">These rows were skipped. All other rows were processed normally.</p>
+    <table>
+      <thead><tr><th>Row</th><th>Patient ID</th><th>Reason</th></tr></thead>
+      <tbody id="errors-body"></tbody>
+    </table>
+  </section>
+
+  <section class="card disclaimer">
+    <strong>Disclaimer:</strong>
+    <span id="disclaimer">This application is an educational demonstration and does not provide medical advice, diagnosis, or treatment. Consult a qualified healthcare professional for medical decisions.</span>
+    The data and risk labels are synthetic.
+  </section>
+</main>
+
+<script>
+  const form = document.getElementById("upload-form");
+  const fileInput = document.getElementById("csv-file");
+  const submitButton = document.getElementById("submit-button");
+  const statusBox = document.getElementById("status");
+  const resultsSection = document.getElementById("results-section");
+  const resultsBody = document.getElementById("results-body");
+  const resultsSummary = document.getElementById("results-summary");
+  const errorsSection = document.getElementById("errors-section");
+  const errorsBody = document.getElementById("errors-body");
+
+  const FEATURE_LABELS = {
+    age: "Age", sex: "Sex", bmi: "BMI", systolic_bp: "Systolic blood pressure",
+    diastolic_bp: "Diastolic blood pressure", resting_hr: "Resting heart rate",
+    glucose: "Blood glucose", cholesterol: "Cholesterol", smoker: "Smoking status",
+    alcohol_units_week: "Alcohol (units/week)", exercise_days_week: "Exercise (days/week)",
+    sleep_hours: "Sleep (hours)", family_history: "Family history",
+  };
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const file = fileInput.files[0];
+    if (!file) {
+      showError("Please choose a CSV file first.");
+      return;
+    }
+
+    setLoading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/predict/upload", { method: "POST", body: formData });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        showError(data.detail || `Upload failed (HTTP ${response.status}).`);
+        return;
+      }
+      statusBox.textContent = "";
+      renderResults(data);
+    } catch (error) {
+      showError("Could not reach the server. Is it running?");
+    } finally {
+      setLoading(false);
+    }
+  });
+
+  function setLoading(isLoading) {
+    submitButton.disabled = isLoading;
+    submitButton.textContent = isLoading ? "Processing..." : "Upload and predict";
+    if (isLoading) {
+      statusBox.className = "status loading";
+      statusBox.textContent = "Processing your file...";
+    }
+  }
+
+  function showError(message) {
+    statusBox.className = "status error";
+    statusBox.textContent = message;
+    resultsSection.classList.add("hidden");
+    errorsSection.classList.add("hidden");
+  }
+
+  // Helper that always uses textContent, so values from the CSV are shown as
+  // text and can never be interpreted as HTML.
+  function createElement(tag, text, className) {
+    const element = document.createElement(tag);
+    if (text !== undefined) element.textContent = text;
+    if (className) element.className = className;
+    return element;
+  }
+
+  function renderResults(data) {
+    resultsBody.replaceChildren();
+    errorsBody.replaceChildren();
+    document.getElementById("disclaimer").textContent = data.disclaimer;
+
+    resultsSummary.textContent =
+      `${data.total_rows} rows received: ${data.predictions.length} predicted, ` +
+      `${data.row_errors.length} rejected. Model version ${data.model_version}.`;
+    data.predictions.forEach((prediction, index) => addPredictionRows(prediction, index));
+    resultsSection.classList.remove("hidden");
+
+    data.row_errors.forEach((rowError) => {
+      const row = document.createElement("tr");
+      row.append(
+        createElement("td", String(rowError.row_number)),
+        createElement("td", rowError.patient_id || "(missing)"),
+        createElement("td", rowError.reason),
+      );
+      errorsBody.append(row);
+    });
+    errorsSection.classList.toggle("hidden", data.row_errors.length === 0);
+  }
+
+  function addPredictionRows(prediction, index) {
+    const summaryRow = document.createElement("tr");
+    const idCell = createElement("td", prediction.patient_id);
+    if (prediction.cached) idCell.append(" ", createElement("span", "(cached)", "cached-tag"));
+
+    const riskCell = document.createElement("td");
+    riskCell.append(createElement("span", prediction.risk_label, `badge badge-${prediction.risk_level}`));
+
+    const probabilities = prediction.probabilities;
+    const probabilityText = [probabilities.low, probabilities.medium, probabilities.high]
+      .map((value) => `${Math.round(value * 100)}%`).join(" / ");
+
+    const detailsId = `details-${index}`;
+    const toggleButton = createElement("button", "Show details", "link-button");
+    toggleButton.type = "button";
+    toggleButton.setAttribute("aria-expanded", "false");
+    toggleButton.setAttribute("aria-controls", detailsId);
+    const toggleCell = document.createElement("td");
+    toggleCell.append(toggleButton);
+
+    summaryRow.append(idCell, riskCell, createElement("td", probabilityText, "hide-mobile"), toggleCell);
+
+    const detailsRow = createElement("tr", undefined, "details-row hidden");
+    detailsRow.id = detailsId;
+    const detailsCell = document.createElement("td");
+    detailsCell.colSpan = 4;
+    detailsCell.append(buildDetails(prediction));
+    detailsRow.append(detailsCell);
+
+    toggleButton.addEventListener("click", () => {
+      const isHidden = detailsRow.classList.toggle("hidden");
+      toggleButton.textContent = isHidden ? "Show details" : "Hide details";
+      toggleButton.setAttribute("aria-expanded", String(!isHidden));
+    });
+
+    resultsBody.append(summaryRow, detailsRow);
+  }
+
+  function buildDetails(prediction) {
+    const grid = createElement("div", undefined, "details-grid");
+
+    const factorsBlock = document.createElement("div");
+    factorsBlock.append(createElement("h3", "Top contributing factors"));
+    const factorList = document.createElement("ul");
+    prediction.top_factors.forEach((factor) => {
+      const label = FEATURE_LABELS[factor.feature] || factor.feature;
+      const value = factor.value === null ? "missing (estimated)" : factor.value;
+      const effect = factor.direction === "increases" ? "supports" : "weighs against";
+      const sign = factor.contribution >= 0 ? "+" : "";
+      factorList.append(createElement(
+        "li",
+        `${label} = ${value}: ${effect} ${prediction.risk_label} (${sign}${factor.contribution.toFixed(2)})`,
+      ));
+    });
+    factorsBlock.append(
+      factorList,
+      createElement("p", "Approximate model contributions towards the predicted level, not medical causes.", "factor-note"),
+    );
+
+    const recommendationsBlock = document.createElement("div");
+    recommendationsBlock.append(createElement("h3", "Recommendations"));
+    const recommendationList = document.createElement("ul");
+    prediction.recommendations.forEach((text) => recommendationList.append(createElement("li", text)));
+    recommendationsBlock.append(recommendationList);
+
+    grid.append(factorsBlock, recommendationsBlock);
+    return grid;
+  }
+</script>
+</body>
+</html>
