@@ -1,3 +1,5 @@
+import logging
+
 from fastapi.testclient import TestClient
 
 from app.config import settings
@@ -98,18 +100,28 @@ def test_all_rows_invalid_still_returns_200_with_errors(client):
     assert len(response.json()["row_errors"]) == 1
 
 
-def test_invalid_csv_file_returns_400(client):
-    response = upload(client, b"\xff\xfe\x00\x01 not text")
+def test_invalid_csv_file_returns_400_and_is_logged(client, caplog):
+    with caplog.at_level(logging.WARNING):
+        response = upload(client, b"\xff\xfe\x00\x01 not text")
 
     assert response.status_code == 400
     assert "UTF-8" in response.json()["detail"]
+    assert "Rejected CSV upload" in caplog.text
 
 
-def test_non_csv_file_type_returns_400(client):
-    response = upload(client, b"%PDF-1.4", filename="report.pdf", content_type="application/pdf")
+def test_non_csv_file_type_returns_400_and_is_logged(client, caplog):
+    with caplog.at_level(logging.WARNING):
+        response = upload(client, b"%PDF-1.4", filename="report.pdf", content_type="application/pdf")
 
     assert response.status_code == 400
     assert "CSV" in response.json()["detail"]
+    assert "unsupported file type" in caplog.text
+
+
+def test_response_reports_processing_time(client):
+    body = client.post("/predict", json={"patients": [make_patient()]}).json()
+
+    assert body["processing_time_ms"] >= 0
 
 
 def test_missing_required_columns_returns_400(client):

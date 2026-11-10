@@ -1,8 +1,11 @@
 import pandas as pd
 import pytest
+from sklearn.model_selection import train_test_split
 
-from app.model import RISK_LEVELS, TOP_FACTOR_COUNT, evaluate_model, load_model, save_model
+from app.model import RANDOM_SEED, RISK_LEVELS, TOP_FACTOR_COUNT, evaluate_model, load_model, save_model, train_model
 from app.preprocessing import FEATURE_COLUMNS, TARGET_COLUMN, prepare_features
+from scripts.generate_mock_data import generate_patients
+from scripts.train_model import TARGET_ACCURACY, VALIDATION_SET_FRACTION
 from tests.conftest import make_patient
 
 
@@ -70,6 +73,21 @@ def test_model_can_be_saved_and_loaded(tmp_path, trained_pipeline, risk_model, s
 
     assert loaded_model.version == "9.9.9"
     assert loaded_model.predict(sample_features) == risk_model.predict(sample_features)
+
+
+@pytest.mark.parametrize("seed", [RANDOM_SEED, 7, 123])
+def test_model_meets_accuracy_target_on_validation_set(seed):
+    # The brief requires at least 75% accuracy on a validation set. Seed 42 is
+    # the real training data; the other seeds check the result isn't a lucky split.
+    data = generate_patients(seed=seed)
+    features, labels = prepare_features(data), data[TARGET_COLUMN]
+    train_features, validation_features, train_labels, validation_labels = train_test_split(
+        features, labels, test_size=VALIDATION_SET_FRACTION, stratify=labels, random_state=RANDOM_SEED
+    )
+
+    metrics = evaluate_model(train_model(train_features, train_labels), validation_features, validation_labels)
+
+    assert metrics["accuracy"] >= TARGET_ACCURACY
 
 
 def test_evaluate_model_returns_expected_metrics(trained_pipeline, training_data):

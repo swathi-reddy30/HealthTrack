@@ -1,6 +1,7 @@
+import pandas as pd
 import pytest
 
-from app.ingestion import CSVValidationError, ingest_csv
+from app.ingestion import REQUIRED_COLUMNS, CSVValidationError, ingest_csv, main
 from tests.conftest import make_patient, to_csv_bytes
 
 
@@ -101,3 +102,48 @@ def test_extra_columns_are_ignored():
 
     assert len(result.patients) == 1
     assert result.row_errors == []
+
+
+def test_cleaned_dataset_contains_only_valid_normalised_rows():
+    rows = [make_patient(patient_id="A1", sex=" Male "), make_patient(patient_id="A2", age=400), make_patient(patient_id="A3", bmi=None)]
+
+    cleaned = ingest_csv(to_csv_bytes(rows)).to_dataframe()
+
+    assert list(cleaned["patient_id"]) == ["A1", "A3"]
+    assert list(cleaned.columns) == REQUIRED_COLUMNS
+    assert cleaned.loc[0, "sex"] == "male"
+    assert pd.api.types.is_numeric_dtype(cleaned["age"])
+    # Blanks stay missing; the model pipeline imputes them from training statistics.
+    assert pd.isna(cleaned.loc[1, "bmi"])
+
+
+def test_labelled_ingestion_requires_and_validates_risk_level():
+    with pytest.raises(CSVValidationError, match="risk_level"):
+        ingest_csv(to_csv_bytes([make_patient()]), with_labels=True)
+
+    rows = [make_patient(patient_id="L1", risk_level="High"), make_patient(patient_id="L2", risk_level="severe")]
+    result = ingest_csv(to_csv_bytes(rows), with_labels=True)
+
+    assert list(result.to_dataframe()["risk_level"]) == ["high"]
+    assert result.row_errors[0].patient_id == "L2"
+    assert "risk_level" in result.row_errors[0].reason
+
+
+def test_command_line_writes_cleaned_csv(tmp_path, capsys):
+    input_path = tmp_path / "patients.csv"
+    output_path = tmp_path / "cleaned.csv"
+    input_path.write_bytes(to_csv_bytes([make_patient(patient_id="A1"), make_patient(patient_id="A2", age=400)]))
+
+    exit_code = main([str(input_path), "--output", str(output_path)])
+
+    assert exit_code == 0
+    assert list(pd.read_csv(output_path)["patient_id"]) == ["A1"]
+    assert "Rejected row 3 (A2)" in capsys.readouterr().out
+
+
+def test_command_line_reports_invalid_file(tmp_path, capsys):
+    input_path = tmp_path / "patients.csv"
+    input_path.write_bytes(b"patient_id,age\nA1,40\n")
+
+    assert main([str(input_path)]) == 1
+    assert "Missing required columns" in capsys.readouterr().out
