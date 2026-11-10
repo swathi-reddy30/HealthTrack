@@ -1,0 +1,70 @@
+{
+  "accuracy": 0.69,
+  "per_class": {
+    "low": {
+      "precision": 0.7792,
+      "recall": 0.7895,
+      "f1_score": 0.7843,
+      "support": 76
+    },
+    "medium": {
+      "precision": 0.5802,
+      "recall": 0.6267,
+      "f1_score": 0.6026,
+      "support": 75
+    },
+    "high": {
+      "precision": 0.7381,
+      "recall": 0.6327,
+      "f1_score": 0.6813,
+      "support": 49
+    }
+  },
+  "confusion_matrix": {
+    "labels": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "note": "Rows are the true risk level, columns are the predicted risk level.",
+    "matrix": [
+      [
+        60,
+        16,
+        0
+      ],
+      [
+        17,
+        47,
+        11
+      ],
+      [
+        0,
+        18,
+        31
+      ]
+    ]
+  },
+  "model_version": "1.0.0",
+  "train_rows": 800,
+  "test_rows": 200,
+  "baseline_accuracy": 0.38,
+  "class_distribution": {
+    "all": {
+      "low": 378,
+      "medium": 376,
+      "high": 246
+    },
+    "train": {
+      "low": 302,
+      "medium": 301,
+      "high": 197
+    },
+    "test": {
+      "low": 76,
+      "medium": 75,
+      "high": 49
+    }
+  },
+  "data_note": "Synthetic data with rule-based labels. Not evidence of real-world medical performance."
+}
