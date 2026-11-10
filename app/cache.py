@@ -4,7 +4,6 @@ Good enough for this single-process demo. With several server instances each
 would have its own cache, so production would use a shared cache such as Redis.
 """
 
-import copy
 import hashlib
 import json
 import logging
@@ -23,7 +22,9 @@ class PredictionCache:
         # The clock can be swapped in tests to check expiry without waiting.
         self._clock = clock
         # OrderedDict remembers order, so the least recently used entry is first.
-        self._entries: "OrderedDict[str, tuple[float, dict]]" = OrderedDict()
+        # Values are stored as JSON text: every get() then returns a fresh copy, so
+        # callers can never change the cached value (and it is faster than deepcopy).
+        self._entries: "OrderedDict[str, tuple[float, str]]" = OrderedDict()
         # FastAPI runs normal (def) endpoints in a thread pool, so two requests
         # can touch the cache at the same time; the lock keeps it consistent.
         self._lock = threading.Lock()
@@ -60,12 +61,11 @@ class PredictionCache:
 
             self._entries.move_to_end(key)  # mark as most recently used
             logger.debug("Cache hit for key %s", key[:12])
-            # Return a copy so callers can't accidentally change the cached value.
-            return copy.deepcopy(value)
+            return json.loads(value)
 
     def set(self, key: str, value: dict) -> None:
         with self._lock:
-            self._entries[key] = (self._clock(), copy.deepcopy(value))
+            self._entries[key] = (self._clock(), json.dumps(value))
             self._entries.move_to_end(key)
             while len(self._entries) > self.max_size:
                 self._entries.popitem(last=False)  # evict the least recently used entry

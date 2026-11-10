@@ -196,9 +196,11 @@
     errorsBody.replaceChildren();
     document.getElementById("disclaimer").textContent = data.disclaimer;
 
+    const cachedCount = data.predictions.filter((prediction) => prediction.cached).length;
     resultsSummary.textContent =
       `${data.total_rows} rows received: ${data.predictions.length} predicted, ` +
-      `${data.row_errors.length} rejected. Model version ${data.model_version}.`;
+      `${data.row_errors.length} rejected. Processed in ${data.processing_time_ms} ms ` +
+      `(${cachedCount} served from cache). Model version ${data.model_version}.`;
     data.predictions.forEach((prediction, index) => addPredictionRows(prediction, index));
     resultsSection.classList.remove("hidden");
 

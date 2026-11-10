@@ -126,6 +126,10 @@ def run_predictions(patients: list[PatientInput], model: RiskModel, cache: Predi
     return predictions
 
 
+def elapsed_ms(start_time: float) -> float:
+    return round((time.perf_counter() - start_time) * 1000, 2)
+
+
 @app.get("/", include_in_schema=False)
 def serve_frontend() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
@@ -145,11 +149,13 @@ def health(request: Request) -> HealthResponse:
 def predict(payload: PredictRequest, request: Request) -> PredictionResponse:
     # FastAPI has already validated the JSON body against PredictRequest;
     # any invalid patient produces a 422 before this function runs.
+    start_time = time.perf_counter()
     model = get_model(request)
     predictions = run_predictions(payload.patients, model, request.app.state.cache)
     return PredictionResponse(
         model_version=model.version,
         total_rows=len(payload.patients),
+        processing_time_ms=elapsed_ms(start_time),
         predictions=predictions,
         row_errors=[],
         disclaimer=DISCLAIMER,
@@ -158,6 +164,7 @@ def predict(payload: PredictRequest, request: Request) -> PredictionResponse:
 
 @app.post("/predict/upload", response_model=PredictionResponse)
 def predict_upload(request: Request, file: UploadFile = File(...)) -> PredictionResponse:
+    start_time = time.perf_counter()
     model = get_model(request)
     check_upload_type(file)
 
@@ -183,6 +190,7 @@ def predict_upload(request: Request, file: UploadFile = File(...)) -> Prediction
     return PredictionResponse(
         model_version=model.version,
         total_rows=ingestion.total_rows,
+        processing_time_ms=elapsed_ms(start_time),
         predictions=predictions,
         row_errors=ingestion.row_errors,
         disclaimer=DISCLAIMER,
@@ -193,6 +201,8 @@ def check_upload_type(file: UploadFile) -> None:
     filename = (file.filename or "").lower()
     content_type = (file.content_type or "").split(";")[0].strip().lower()
     if not filename.endswith(".csv") or content_type not in ALLOWED_UPLOAD_CONTENT_TYPES:
+        # %r escapes newlines, so a crafted content type can't forge extra log lines.
+        logger.warning("Rejected upload with unsupported file type (content type %r)", content_type)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only CSV files (.csv) can be uploaded.",
