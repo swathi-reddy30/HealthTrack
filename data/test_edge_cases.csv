@@ -1,0 +1,18 @@
+Family_History,Sleep_Hours,SMOKER,Patient_ID,Age,Sex,BMI,Systolic_BP,Diastolic_BP,Resting_HR,Glucose,Cholesterol,Alcohol_Units_Week,Exercise_Days_Week,Coach_Notes,risk_level
+no,8,never,EDGE_MIN_AGE,18,female,21,110,70,60,85,160,0,7,youngest allowed age,high
+yes,5,current,EDGE_MAX_AGE,110,male,30,160,90,80,130,240,10,0,oldest allowed age,low
+no,0,never,EDGE_SLEEP_0,40,female,24,118,76,68,90,180,2,3,sleep lower bound,
+no,24,never,EDGE_SLEEP_24,40,male,24,118,76,68,90,180,2,3,sleep upper bound,
+no,7.25,former,EDGE_DECIMALS,47,female,26.75,121.5,79.5,71.5,99.5,201.5,3.5,4,decimal values,
+yes,6.5,never,1001,55,male,28,135,85,75,110,215,8,2,numeric patient id,
+NO,7,Never,MIXED_CASE,38,MALE,25,120,80,70,95,190,4,3,upper and mixed case values,
+,,,ALL_MISSING,,,,,,,,,,,only an id - everything imputed,
+no,7,never,BAD_AGE_17,17,female,22,112,72,64,86,170,1,5,one year too young,
+no,7,never,BAD_AGE_111,111,male,24,130,80,70,95,200,2,3,one year too old,
+no,7,never,BAD_EQUAL_BP,50,male,26,120,120,72,100,200,5,3,diastolic equals systolic,
+no,7,never,BAD_NEG_ALCOHOL,45,female,25,120,80,70,95,190,-2,3,negative alcohol,
+no,7,never,BAD_EXERCISE_DEC,45,female,25,120,80,70,95,190,2,3.5,exercise must be whole days,
+maybe,7,never,BAD_FAMILY,45,male,25,120,80,70,95,190,2,3,invalid yes/no value,
+no,7,smoker,BAD_TWO_ERRORS,500,male,25,120,80,70,95,190,2,3,two problems in one row,
+no,7,never,BAD ID WITH SPACES,45,male,25,120,80,70,95,190,2,3,spaces not allowed in id,
+no,7,never,BAD_GLUCOSE,45,female,25,120,80,70,9000,190,2,3,impossible glucose,
